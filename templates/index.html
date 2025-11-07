@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Language to Text Converter (Live Mode)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Sign Language to Text Converter</h1>
+    <video id="camera" autoplay playsinline></video>
+
+    <div class="controls">
+      <button id="startBtn">🎥 Start Live Prediction</button>
+      <button id="stopBtn" disabled>🛑 Stop</button>
+    </div>
+
+    <div id="output">
+      <h2>🧠 Live Prediction: <span id="prediction">--</span></h2>
+    </div>
+  </div>
+
+  <script>
+    const camera = document.getElementById('camera');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const predictionText = document.getElementById('prediction');
+
+    let mediaRecorder;
+    let chunks = [];
+    let stream;
+    let interval;
+
+    async function startCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      camera.srcObject = stream;
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        chunks = [];
+
+        const formData = new FormData();
+        formData.append('video', blob, 'clip.webm');
+
+        try {
+          const res = await fetch('/predict', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.prediction) predictionText.textContent = data.prediction;
+        } catch {
+          predictionText.textContent = 'Error...';
+        }
+      };
+    }
+
+    startBtn.onclick = async () => {
+      await startCamera();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      
+      interval = setInterval(() => {
+        mediaRecorder.start();
+        setTimeout(() => mediaRecorder.stop(), 2000); 
+      }, 2500);
+    };
+
+    stopBtn.onclick = () => {
+      clearInterval(interval);
+      if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      stream.getTracks().forEach(track => track.stop());
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      predictionText.textContent = '--';
+    };
+  </script>
+</body>
+</html>
