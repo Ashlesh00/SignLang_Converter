@@ -1,7 +1,0 @@
-streamlit
-opencv-python-headless
-numpy
-requests
-mediapipe
-tflite-runtime
-flask
