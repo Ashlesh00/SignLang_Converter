@@ -1,0 +1,5 @@
+streamlit==1.30.0
+opencv-python-headless
+numpy
+requests
+mediapipe==0.10.11
